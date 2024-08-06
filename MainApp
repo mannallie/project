@@ -1,0 +1,193 @@
+import javafx.application.Application;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
+import javafx.geometry.Insets;
+import javafx.scene.Scene;
+import javafx.scene.control.*;
+import javafx.scene.layout.*;
+import javafx.stage.Stage;
+
+public class MainApp extends Application {
+
+    private TableView<Student> studentTable = new TableView<>();
+    private ObservableList<Student> studentData = FXCollections.observableArrayList();
+    private ObservableList<Course> courseData = FXCollections.observableArrayList();
+
+    public static void main(String[] args) {
+        launch(args);
+    }
+
+    @Override
+    public void start(Stage primaryStage) {
+        primaryStage.setTitle("Student Management System");
+
+        // Sample data
+        studentData.add(new Student("1", "Alice", "alice@example.com"));
+        studentData.add(new Student("2", "Bob", "bob@example.com"));
+        courseData.add(new Course("1", "Math"));
+        courseData.add(new Course("2", "Science"));
+
+        // Layout
+        BorderPane root = new BorderPane();
+        Scene scene = new Scene(root, 800, 600);
+
+        // Components
+        Button addStudentButton = new Button("Add Student");
+        Button updateStudentButton = new Button("Update Student");
+        Button viewStudentButton = new Button("View Student Details");
+        Button enrollStudentButton = new Button("Enroll Student in Course");
+        Button assignGradeButton = new Button("Assign Grade");
+
+        HBox buttons = new HBox(10, addStudentButton, updateStudentButton, viewStudentButton, enrollStudentButton, assignGradeButton);
+        root.setTop(buttons);
+        root.setCenter(studentTable);
+
+        // Table Columns
+        TableColumn<Student, String> idColumn = new TableColumn<>("ID");
+        idColumn.setCellValueFactory(cellData -> new javafx.beans.property.SimpleStringProperty(cellData.getValue().getId()));
+
+        TableColumn<Student, String> nameColumn = new TableColumn<>("Name");
+        nameColumn.setCellValueFactory(cellData -> new javafx.beans.property.SimpleStringProperty(cellData.getValue().getName()));
+
+        TableColumn<Student, String> emailColumn = new TableColumn<>("Email");
+        emailColumn.setCellValueFactory(cellData -> new javafx.beans.property.SimpleStringProperty(cellData.getValue().getEmail()));
+
+        studentTable.getColumns().addAll(idColumn, nameColumn, emailColumn);
+        studentTable.setItems(studentData);
+
+        // Event Handlers
+        addStudentButton.setOnAction(e -> showAddStudentForm());
+        updateStudentButton.setOnAction(e -> showUpdateStudentForm());
+        viewStudentButton.setOnAction(e -> showStudentDetails());
+        enrollStudentButton.setOnAction(e -> showEnrollmentForm());
+        assignGradeButton.setOnAction(e -> showGradeManagementForm());
+
+        primaryStage.setScene(scene);
+        primaryStage.show();
+    }
+
+    private void showAddStudentForm() {
+        Stage dialog = new Stage();
+        dialog.setTitle("Add Student");
+
+        VBox vbox = new VBox();
+        vbox.setSpacing(10);
+        vbox.setPadding(new Insets(10, 10, 10, 10));
+
+        TextField idField = new TextField();
+        idField.setPromptText("ID");
+        TextField nameField = new TextField();
+        nameField.setPromptText("Name");
+        TextField emailField = new TextField();
+        emailField.setPromptText("Email");
+
+        Button addButton = new Button("Add");
+        addButton.setOnAction(e -> {
+            String id = idField.getText();
+            String name = nameField.getText();
+            String email = emailField.getText();
+
+            studentData.add(new Student(id, name, email));
+            dialog.close();
+        });
+
+        vbox.getChildren().addAll(new Label("ID:"), idField, new Label("Name:"), nameField, new Label("Email:"), emailField, addButton);
+
+        Scene scene = new Scene(vbox);
+        dialog.setScene(scene);
+        dialog.show();
+    }
+
+    private void showUpdateStudentForm() {
+        Stage dialog = new Stage();
+        dialog.setTitle("Update Student");
+
+        VBox vbox = new VBox();
+        vbox.setSpacing(10);
+        vbox.setPadding(new Insets(10, 10, 10, 10));
+
+        ComboBox<Student> studentComboBox = new ComboBox<>(studentData);
+        TextField nameField = new TextField();
+        TextField emailField = new TextField();
+
+        studentComboBox.setOnAction(e -> {
+            Student selectedStudent = studentComboBox.getValue();
+            if (selectedStudent != null) {
+                nameField.setText(selectedStudent.getName());
+                emailField.setText(selectedStudent.getEmail());
+            }
+        });
+
+        Button updateButton = new Button("Update");
+        updateButton.setOnAction(e -> {
+            Student selectedStudent = studentComboBox.getValue();
+            if (selectedStudent != null) {
+                selectedStudent.setName(nameField.getText());
+                selectedStudent.setEmail(emailField.getText());
+                studentTable.refresh();
+                dialog.close();
+            }
+        });
+
+        vbox.getChildren().addAll(new Label("Select Student:"), studentComboBox, new Label("Name:"), nameField, new Label("Email:"), emailField, updateButton);
+
+        Scene scene = new Scene(vbox);
+        dialog.setScene(scene);
+        dialog.show();
+    }
+
+    private void showStudentDetails() {
+        studentTable.refresh();
+    }
+
+    private void showEnrollmentForm() {
+        Stage dialog = new Stage();
+        dialog.setTitle("Enroll Student in Course");
+
+        VBox vbox = new VBox();
+        vbox.setSpacing(10);
+        vbox.setPadding(new Insets(10, 10, 10, 10));
+
+        ComboBox<Course> courseComboBox = new ComboBox<>(courseData);
+        ListView<Student> studentListView = new ListView<>(studentData);
+
+        courseComboBox.setOnAction(e -> {
+            Course selectedCourse = courseComboBox.getValue();
+            if (selectedCourse != null) {
+                ObservableList<Student> eligibleStudents = FXCollections.observableArrayList(studentData);
+                eligibleStudents.removeAll(selectedCourse.getEnrolledStudents());
+                studentListView.setItems(eligibleStudents);
+            }
+        });
+
+        Button enrollButton = new Button("Enroll");
+        enrollButton.setOnAction(e -> {
+            Course selectedCourse = courseComboBox.getValue();
+            Student selectedStudent = studentListView.getSelectionModel().getSelectedItem();
+            if (selectedCourse != null && selectedStudent != null) {
+                selectedCourse.enrollStudent(selectedStudent);
+                dialog.close();
+            } else {
+                showError("Please select a course and a student to enroll.");
+            }
+        });
+
+        vbox.getChildren().addAll(new Label("Select Course:"), courseComboBox, new Label("Select Student:"), studentListView, enrollButton);
+
+        Scene scene = new Scene(vbox);
+        dialog.setScene(scene);
+        dialog.show();
+    }
+
+    private void showGradeManagementForm() {
+        // Implement the grade management form here
+    }
+
+    private void showError(String message) {
+        Alert alert = new Alert(Alert.AlertType.ERROR);
+        alert.setTitle("Error");
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
+    }
+}
